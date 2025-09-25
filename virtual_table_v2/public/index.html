@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <title>Virtual Data Poker Manager v2.0</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <!-- 로딩 화면 -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="spinner"></div>
+        <p>Virtual Data Poker Manager 로딩 중...</p>
+    </div>
+
+    <!-- 로그인 화면 -->
+    <div id="loginScreen" class="screen" style="display:none;">
+        <div class="login-container">
+            <h1>🎯 Virtual Data Poker</h1>
+            <form id="loginForm" class="form">
+                <input type="email" id="loginEmail" placeholder="이메일" required>
+                <input type="password" id="loginPassword" placeholder="비밀번호" required>
+                <button type="submit" class="btn btn-primary">로그인</button>
+                <button type="button" id="showRegister" class="btn btn-secondary">회원가입</button>
+            </form>
+            <form id="registerForm" class="form" style="display:none;">
+                <input type="text" id="registerName" placeholder="이름" required>
+                <input type="email" id="registerEmail" placeholder="이메일" required>
+                <input type="password" id="registerPassword" placeholder="비밀번호" required>
+                <button type="submit" class="btn btn-primary">회원가입</button>
+                <button type="button" id="showLogin" class="btn btn-secondary">로그인으로 돌아가기</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 메인 화면 -->
+    <div id="mainScreen" class="screen" style="display:none;">
+        <!-- 헤더 -->
+        <header class="app-header">
+            <div class="header-left">
+                <button id="menuBtn" class="icon-btn">☰</button>
+                <h2>Virtual Data Poker</h2>
+            </div>
+            <div class="header-right">
+                <span id="connectionStatus" class="status-indicator">●</span>
+                <span id="userName"></span>
+                <button id="logoutBtn" class="icon-btn">⚡</button>
+            </div>
+        </header>
+
+        <!-- 탭 네비게이션 -->
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="hand">핸드 로거</button>
+            <button class="tab-btn" data-tab="history">히스토리</button>
+            <button class="tab-btn" data-tab="stats">통계</button>
+            <button class="tab-btn" data-tab="settings">설정</button>
+        </nav>
+
+        <!-- 탭 컨텐츠 -->
+        <main class="tab-content">
+            <!-- 핸드 로거 탭 -->
+            <div id="handTab" class="tab-panel active">
+                <!-- 핸드 정보 -->
+                <section class="card">
+                    <h3>핸드 정보</h3>
+                    <div class="hand-info">
+                        <div class="info-row">
+                            <label>딜러 버튼:</label>
+                            <select id="dealerButton" class="input-small">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                            </select>
+                        </div>
+                        <div class="info-row">
+                            <label>카메라 위치:</label>
+                            <select id="cameraPosition" class="input-small">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                            </select>
+                        </div>
+                        <div class="info-row">
+                            <label>초기 칩:</label>
+                            <input type="number" id="initialChips" placeholder="1000" class="input-medium">
+                        </div>
+                    </div>
+                    <button id="startHandBtn" class="btn btn-primary btn-block">새 핸드 시작</button>
+                </section>
+
+                <!-- 칩 계산기 -->
+                <section class="card" id="chipCalculatorSection" style="display:none;">
+                    <h3>칩 계산기</h3>
+                    <div class="chip-grid">
+                        <button class="chip-btn" data-value="1">1</button>
+                        <button class="chip-btn" data-value="5">5</button>
+                        <button class="chip-btn" data-value="25">25</button>
+                        <button class="chip-btn" data-value="100">100</button>
+                        <button class="chip-btn" data-value="500">500</button>
+                        <button class="chip-btn" data-value="1000">1K</button>
+                        <button class="chip-btn" data-value="5000">5K</button>
+                        <button class="chip-btn" data-value="25000">25K</button>
+                    </div>
+                    <div class="chip-display">
+                        <div id="chipTotal">총합: 0</div>
+                        <div id="chipBreakdown"></div>
+                    </div>
+                    <div class="chip-input">
+                        <input type="number" id="customChipAmount" placeholder="직접 입력">
+                        <button id="addCustomChip" class="btn btn-secondary">추가</button>
+                    </div>
+                    <button id="clearChips" class="btn btn-danger">초기화</button>
+                </section>
+
+                <!-- 액션 버튼 -->
+                <section class="card" id="actionSection" style="display:none;">
+                    <h3>액션</h3>
+                    <div class="action-grid">
+                        <button class="action-btn" data-action="FOLD">폴드</button>
+                        <button class="action-btn" data-action="CHECK">체크</button>
+                        <button class="action-btn" data-action="CALL">콜</button>
+                        <button class="action-btn" data-action="BET">벳</button>
+                        <button class="action-btn" data-action="RAISE">레이즈</button>
+                        <button class="action-btn" data-action="ALL_IN">올인</button>
+                    </div>
+                    <div class="action-amount" id="actionAmountSection" style="display:none;">
+                        <input type="number" id="actionAmount" placeholder="금액">
+                        <button id="confirmAction" class="btn btn-primary">확인</button>
+                    </div>
+                </section>
+
+                <!-- 핸드 완료 -->
+                <section class="card" id="completeSection" style="display:none;">
+                    <h3>핸드 완료</h3>
+                    <div class="complete-options">
+                        <label>결과:</label>
+                        <select id="handResult">
+                            <option value="win">승리</option>
+                            <option value="loss">패배</option>
+                            <option value="split">분할</option>
+                            <option value="no_showdown">쇼다운 없음</option>
+                        </select>
+                    </div>
+                    <div class="complete-options">
+                        <label>최종 칩:</label>
+                        <input type="number" id="finalChips" placeholder="최종 칩">
+                    </div>
+                    <div class="complete-options">
+                        <label>메모:</label>
+                        <textarea id="handNotes" placeholder="메모 (선택사항)"></textarea>
+                    </div>
+                    <button id="completeHandBtn" class="btn btn-success btn-block">핸드 완료</button>
+                    <button id="cancelHandBtn" class="btn btn-danger btn-block">핸드 취소</button>
+                </section>
+            </div>
+
+            <!-- 히스토리 탭 -->
+            <div id="historyTab" class="tab-panel">
+                <section class="card">
+                    <h3>핸드 히스토리</h3>
+                    <div class="filter-bar">
+                        <input type="date" id="filterStartDate" class="input-small">
+                        <input type="date" id="filterEndDate" class="input-small">
+                        <select id="filterResult" class="input-small">
+                            <option value="">전체</option>
+                            <option value="win">승리</option>
+                            <option value="loss">패배</option>
+                            <option value="split">분할</option>
+                        </select>
+                        <button id="applyFilter" class="btn btn-secondary">필터</button>
+                    </div>
+                    <div id="historyList" class="history-list"></div>
+                </section>
+            </div>
+
+            <!-- 통계 탭 -->
+            <div id="statsTab" class="tab-panel">
+                <section class="card">
+                    <h3>전체 통계</h3>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">총 핸드</div>
+                            <div class="stat-value" id="totalHands">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">승률</div>
+                            <div class="stat-value" id="winRate">0%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">총 수익</div>
+                            <div class="stat-value" id="totalProfit">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">평균 수익</div>
+                            <div class="stat-value" id="avgProfit">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">VPIP</div>
+                            <div class="stat-value" id="vpip">0%</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">PFR</div>
+                            <div class="stat-value" id="pfr">0%</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card">
+                    <h3>차트</h3>
+                    <canvas id="profitChart"></canvas>
+                </section>
+            </div>
+
+            <!-- 설정 탭 -->
+            <div id="settingsTab" class="tab-panel">
+                <section class="card">
+                    <h3>기본 설정</h3>
+                    <div class="setting-row">
+                        <label>테이블 이름:</label>
+                        <input type="text" id="tableName" value="Table 1" class="input-medium">
+                    </div>
+                    <div class="setting-row">
+                        <label>플레이어 수:</label>
+                        <select id="playerCount" class="input-small">
+                            <option value="6">6</option>
+                            <option value="9" selected>9</option>
+                        </select>
+                    </div>
+                    <div class="setting-row">
+                        <label>스몰 블라인드:</label>
+                        <input type="number" id="smallBlind" value="1" class="input-small">
+                    </div>
+                    <div class="setting-row">
+                        <label>빅 블라인드:</label>
+                        <input type="number" id="bigBlind" value="2" class="input-small">
+                    </div>
+                    <button id="saveSettings" class="btn btn-primary">설정 저장</button>
+                </section>
+
+                <section class="card">
+                    <h3>데이터 관리</h3>
+                    <button id="exportData" class="btn btn-secondary btn-block">데이터 내보내기</button>
+                    <button id="importData" class="btn btn-secondary btn-block">데이터 가져오기</button>
+                    <button id="syncData" class="btn btn-warning btn-block">오프라인 데이터 동기화</button>
+                    <button id="clearData" class="btn btn-danger btn-block">모든 데이터 삭제</button>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- 사이드 메뉴 -->
+    <div id="sideMenu" class="side-menu">
+        <div class="menu-header">
+            <h3>메뉴</h3>
+            <button id="closeMenu" class="icon-btn">×</button>
+        </div>
+        <nav class="menu-nav">
+            <a href="#" class="menu-item" data-action="about">정보</a>
+            <a href="#" class="menu-item" data-action="help">도움말</a>
+            <a href="#" class="menu-item" data-action="feedback">피드백</a>
+            <a href="#" class="menu-item" data-action="version">버전: 2.0.0</a>
+        </nav>
+    </div>
+
+    <!-- 오버레이 -->
+    <div id="overlay" class="overlay"></div>
+
+    <!-- 토스트 메시지 -->
+    <div id="toast" class="toast"></div>
+
+    <!-- JavaScript 모듈 -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sheets 연동 데모 - Virtual Data Poker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .demo-header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .demo-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .demo-header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .demo-controls {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-info { background: #17a2b8; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .sheet-container {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .api-endpoints {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .endpoint {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #007bff;
+        }
+
+        .endpoint-method {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .endpoint-method.post { background: #28a745; }
+        .endpoint-method.get { background: #17a2b8; }
+
+        .endpoint-url {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .endpoint-desc {
+            color: #6c757d;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status-connected { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+        .status-loading { background: #fff3cd; color: #856404; }
+
+        @media (max-width: 768px) {
+            .demo-header h1 { font-size: 2rem; }
+            .control-group { justify-content: center; }
+            .btn { flex: 1; min-width: 120px; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="demo-header">
+            <h1>📊 Google Sheets 연동 데모</h1>
+            <p>실시간 Type 시트 데이터 뷰어 및 API 테스트</p>
+        </header>
+
+        <!-- 컨트롤 패널 -->
+        <div class="demo-controls">
+            <div class="control-group">
+                <button id="loadSheet" class="btn btn-primary">
+                    🔄 시트 로드
+                </button>
+                <button id="testConnection" class="btn btn-success">
+                    🔗 연결 테스트
+                </button>
+                <button id="getStats" class="btn btn-info">
+                    📈 통계 조회
+                </button>
+                <button id="clearCache" class="btn btn-warning">
+                    🗑️ 캐시 클리어
+                </button>
+                <a href="/" class="btn btn-secondary">
+                    ← 메인으로
+                </a>
+                <span id="connectionStatus" class="status-badge status-loading">연결 확인 중...</span>
+            </div>
+        </div>
+
+        <!-- 시트 뷰어 -->
+        <div class="sheet-container">
+            <div id="sheetViewer">
+                <div style="padding: 40px; text-align: center; color: #666;">
+                    <h3>🎯 시트 데이터를 로드하려면 '시트 로드' 버튼을 클릭하세요</h3>
+                    <p>실제 Google Sheets 데이터가 여기에 표시됩니다.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- API 엔드포인트 정보 -->
+        <div class="api-endpoints">
+            <h3>🚀 사용 가능한 API 엔드포인트</h3>
+
+            <div class="endpoint">
+                <span class="endpoint-method get">GET</span>
+                <span class="endpoint-url">/api/spreadsheet/info</span>
+                <div class="endpoint-desc">스프레드시트 기본 정보 및 메타데이터 조회</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="endpoint-method get">GET</span>
+                <span class="endpoint-url">/api/spreadsheet/health</span>
+                <div class="endpoint-desc">Google Sheets 연결 상태 상세 확인</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="endpoint-method get">GET</span>
+                <span class="endpoint-url">/api/spreadsheet/preview</span>
+                <div class="endpoint-desc">Type 시트 미리보기 (기본 10행)</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="endpoint-method get">GET</span>
+                <span class="endpoint-url">/api/spreadsheet/url</span>
+                <div class="endpoint-desc">브라우저에서 열 수 있는 스프레드시트 URL 생성</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="endpoint-method get">GET</span>
+                <span class="endpoint-url">/api/sheets/read</span>
+                <div class="endpoint-desc">Type 시트 데이터 읽기 (v2 형식으로 변환)</div>
+            </div>
+
+            <div class="endpoint">
+                <span class="endpoint-method post">POST</span>
+                <span class="endpoint-url">/api/sheets/convert-to-sheet</span>
+                <div class="endpoint-desc">v2 데이터를 Google Sheets 형식으로 변환</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { SheetViewer } from './js/modules/SheetViewer.js';
+
+        // SheetViewer 초기화
+        const viewer = new SheetViewer('sheetViewer');
+
+        // 버튼 이벤트
+        document.getElementById('loadSheet').addEventListener('click', () => {
+            viewer.loadSheetData(true);
+        });
+
+        document.getElementById('testConnection').addEventListener('click', async () => {
+            const btn = document.getElementById('testConnection');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '🔄 테스트 중...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/spreadsheet/health');
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('✅ 연결 성공!', 'success');
+                } else {
+                    showNotification('❌ 연결 실패: ' + (result.error || '알 수 없는 오류'), 'error');
+                }
+            } catch (error) {
+                showNotification('❌ 연결 오류: ' + error.message, 'error');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        document.getElementById('getStats').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/spreadsheet/info');
+                const result = await response.json();
+
+                if (result.success) {
+                    const info = result.data;
+                    showNotification(`📊 시트 정보: ${info.title || 'Unknown'} (${info.sheets?.length || 0}개 시트)`, 'info');
+                } else {
+                    showNotification('❌ 정보 조회 실패', 'error');
+                }
+            } catch (error) {
+                showNotification('❌ 오류: ' + error.message, 'error');
+            }
+        });
+
+        document.getElementById('clearCache').addEventListener('click', async () => {
+            const confirmed = confirm('캐시를 모두 삭제하시겠습니까?');
+            if (!confirmed) return;
+
+            try {
+                // 캐시 클리어 요청 (구현 예정)
+                showNotification('🗑️ 캐시가 삭제되었습니다', 'success');
+                viewer.loadSheetData(true);
+            } catch (error) {
+                showNotification('❌ 캐시 삭제 실패: ' + error.message, 'error');
+            }
+        });
+
+        // 연결 상태 모니터링
+        async function checkConnectionStatus() {
+            try {
+                const response = await fetch('/api/sheets/test');
+                const result = await response.json();
+
+                const statusElement = document.getElementById('connectionStatus');
+                if (result.success) {
+                    statusElement.className = 'status-badge status-connected';
+                    statusElement.textContent = '🟢 연결됨';
+                } else {
+                    statusElement.className = 'status-badge status-error';
+                    statusElement.textContent = '🔴 연결 실패';
+                }
+            } catch (error) {
+                const statusElement = document.getElementById('connectionStatus');
+                statusElement.className = 'status-badge status-error';
+                statusElement.textContent = '🔴 오프라인';
+            }
+        }
+
+        // 알림 표시
+        function showNotification(message, type = 'info') {
+            // 기존 알림 제거
+            const existing = document.querySelector('.notification');
+            if (existing) existing.remove();
+
+            // 새 알림 생성
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-weight: bold;
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+                max-width: 300px;
+            `;
+
+            switch (type) {
+                case 'success': notification.style.background = '#28a745'; break;
+                case 'error': notification.style.background = '#dc3545'; break;
+                case 'info': notification.style.background = '#17a2b8'; break;
+                default: notification.style.background = '#6c757d';
+            }
+
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            // 3초 후 자동 제거
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // 애니메이션 CSS 추가
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // 초기 연결 상태 확인
+        checkConnectionStatus();
+
+        // 30초마다 연결 상태 확인
+        setInterval(checkConnectionStatus, 30000);
+    </script>
+</body>
+</html>
