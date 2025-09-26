@@ -168,6 +168,14 @@
                 <button id="clearCache" class="btn btn-warning">
                     🗑️ 캐시 클리어
                 </button>
+                <div style="display: inline-block; margin-left: 10px;">
+                    <button id="exportCSV" class="btn btn-success">
+                        📥 CSV 내보내기
+                    </button>
+                    <button id="exportJSON" class="btn btn-primary">
+                        📥 JSON 내보내기
+                    </button>
+                </div>
                 <a href="/" class="btn btn-secondary">
                     ← 메인으로
                 </a>
@@ -287,6 +295,42 @@
                 viewer.loadSheetData(true);
             } catch (error) {
                 showNotification('❌ 캐시 삭제 실패: ' + error.message, 'error');
+            }
+        });
+
+        // CSV 내보내기
+        document.getElementById('exportCSV').addEventListener('click', async () => {
+            try {
+                showNotification('📥 CSV 다운로드 시작...', 'info');
+                window.location.href = '/api/sheets/export/csv';
+                setTimeout(() => showNotification('✅ CSV 내보내기 완료', 'success'), 1000);
+            } catch (error) {
+                showNotification('❌ CSV 내보내기 실패: ' + error.message, 'error');
+            }
+        });
+
+        // JSON 내보내기
+        document.getElementById('exportJSON').addEventListener('click', async () => {
+            try {
+                showNotification('📥 JSON 다운로드 시작...', 'info');
+
+                const response = await fetch('/api/sheets/export/json');
+                const data = await response.json();
+
+                // JSON을 파일로 다운로드
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `poker_tables_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                showNotification('✅ JSON 내보내기 완료', 'success');
+            } catch (error) {
+                showNotification('❌ JSON 내보내기 실패: ' + error.message, 'error');
             }
         });
 

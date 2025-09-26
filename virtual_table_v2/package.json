@@ -1,6 +1,6 @@
 {
   "name": "virtual-data-claude-v2",
-  "version": "2.0.1",
+  "version": "2.1.1",
   "description": "차세대 포커 핸드 로거 - 모듈화되고 보안이 강화된 버전",
   "main": "server/index.js",
   "type": "module",

@@ -13,6 +13,7 @@ import authRouter from './routes/auth.js';
 import sheetsRouter from './routes/sheets.js';
 import spreadsheetRouter from './routes/spreadsheet.js';
 import handsRouter from './routes/hands.js';
+import exportRouter from './routes/export.js';
 
 // ES 모듈에서 __dirname 사용
 const __filename = fileURLToPath(import.meta.url);
@@ -67,8 +68,17 @@ app.use(cors({
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000,
-  max: process.env.RATE_LIMIT_MAX || 100,
-  message: 'Too many requests from this IP, please try again later.'
+  max: process.env.NODE_ENV === 'development'
+    ? (process.env.RATE_LIMIT_MAX_DEV || 1000)  // 개발환경: 1000개/15분
+    : (process.env.RATE_LIMIT_MAX || 100),      // 프로덕션: 100개/15분
+  standardHeaders: true, // HTTP 표준 헤더 포함
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Too Many Requests',
+    message: 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
+    retryAfter: Math.ceil(((process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000) / 1000)
+  }
 });
 app.use('/api/', limiter);
 
@@ -86,11 +96,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// 정적 파일 서빙 (public 폴더)
+app.use(express.static(path.join(__dirname, '../public')));
+
 // API 라우트
 app.use('/api/auth', authRouter);
 app.use('/api/sheets', sheetsRouter);
 app.use('/api/spreadsheet', spreadsheetRouter);
 app.use('/api/hands', handsRouter);
+app.use('/api/sheets/export', exportRouter);
 
 // 헬스 체크
 app.get('/api/health', (req, res) => {

@@ -78,8 +78,48 @@ class SheetDataMapper {
     sheetData.forEach((row, index) => {
       console.log(`📝 행 ${index + 1}:`, row);
 
-      if (!row || row.length < 8) {
-        console.log(`❌ 행 ${index + 1} 건너뜀: 유효하지 않거나 컬럼 수 부족 (${row?.length || 0}/8)`);
+      // 헤더 행 체크 및 스킵 (강화된 로직)
+      if (row[0] === 'Poker Room' && row[1] === 'Table Name') {
+        console.log('📋 헤더 행 감지 - 스킵');
+        return;
+      }
+
+      // 추가 헤더 감지 로직 (다양한 케이스 대응)
+      if (row[4] === 'Players' && row[5] === 'Nationality' && row[6] === 'Chips') {
+        console.log('📋 헤더 행 감지 (Players/Nationality/Chips) - 스킵');
+        return;
+      }
+
+      // 헤더 행의 특성: 모든 컬럼이 문자열이고 실제 데이터와 패턴이 다름
+      if (typeof row[2] === 'string' && row[2] === 'Table No.' &&
+          typeof row[3] === 'string' && row[3] === 'Seat No.') {
+        console.log('📋 헤더 행 감지 (Table No./Seat No.) - 스킵');
+        return;
+      }
+
+      // 최소 7개 컬럼 필요 (Keyplayer는 선택사항) - 하지만 undefined 값도 허용
+      if (!row || row.length < 6) {
+        console.log(`❌ 행 ${index + 1} 건너뜀: 컬럼 수 부족 (${row?.length || 0}/6 minimum)`);
+        return;
+      }
+
+      // 7컬럼 또는 6컬럼인 경우 Keyplayer 기본값 추가하여 8컬럼으로 확장
+      while (row.length < 8) {
+        if (row.length === 7) {
+          row.push(false); // Keyplayer 기본값 추가
+          console.log(`🔧 행 ${index + 1}: Keyplayer 기본값(false) 추가 - ${row.length - 1}→8 컬럼으로 확장`);
+        } else if (row.length === 6) {
+          row.push(''); // Chips 기본값
+          console.log(`🔧 행 ${index + 1}: Chips 기본값 추가 - ${row.length - 1}→${row.length} 컬럼으로 확장`);
+        } else {
+          row.push(''); // 기타 누락 컬럼 기본값
+          console.log(`🔧 행 ${index + 1}: 기본값 추가 - ${row.length - 1}→${row.length} 컬럼으로 확장`);
+        }
+      }
+
+      // 빈 행 또는 유효하지 않은 데이터 체크
+      if (!row[0] || !row[1] || !row[4]) { // Poker Room, Table Name, Players 필수
+        console.log(`⚠️ 행 ${index + 1} 건너뜀: 필수 필드 누락`);
         return;
       }
 
@@ -95,14 +135,30 @@ class SheetDataMapper {
         });
       }
 
+      // 좌석 번호 파싱 개선 (#1 -> 1)
+      let seatNo = 0;
+      if (row[this.TYPE_COLUMNS.SEAT_NO]) {
+        const seatStr = String(row[this.TYPE_COLUMNS.SEAT_NO]).replace('#', '');
+        seatNo = parseInt(seatStr) || 0;
+      }
+
+      // 칩 수량 파싱 개선 (콤마 제거)
+      let chips = 0;
+      if (row[this.TYPE_COLUMNS.CHIPS]) {
+        const chipsStr = String(row[this.TYPE_COLUMNS.CHIPS]).replace(/,/g, '');
+        chips = parseFloat(chipsStr) || 0;
+      }
+
       const playerData = {
-        seatNo: parseInt(row[this.TYPE_COLUMNS.SEAT_NO]) || 0,
+        seatNo: seatNo,
         name: row[this.TYPE_COLUMNS.PLAYERS],
-        nationality: row[this.TYPE_COLUMNS.NATIONALITY],
-        currentChips: parseFloat(row[this.TYPE_COLUMNS.CHIPS]) || 0,
-        isKeyPlayer: row[this.TYPE_COLUMNS.KEYPLAYER] === true ||
+        nationality: row[this.TYPE_COLUMNS.NATIONALITY] || '',
+        currentChips: chips,
+        isKeyPlayer: row.length >= 8 && (
+                     row[this.TYPE_COLUMNS.KEYPLAYER] === true ||
                      row[this.TYPE_COLUMNS.KEYPLAYER] === 'TRUE' ||
-                     row[this.TYPE_COLUMNS.KEYPLAYER] === 'true'
+                     row[this.TYPE_COLUMNS.KEYPLAYER] === 'true' ||
+                     row[this.TYPE_COLUMNS.KEYPLAYER] === '1')
       };
 
       console.log(`✅ 플레이어 추가됨 - 테이블: ${tableKey}, 플레이어:`, playerData);

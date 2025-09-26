@@ -1,8 +1,8 @@
 /**
- * Service Worker - Virtual Data Poker Manager v2.0
+ * Service Worker - Virtual Data Poker Manager v2.1.1
  */
 
-const CACHE_NAME = 'vdc-v2.0.0';
+const CACHE_NAME = 'vdc-v2.1.1-optimized';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -78,13 +78,26 @@ self.addEventListener('fetch', event => {
             return response;
           }
 
-          // 응답을 복제하여 캐시에 저장
-          const responseToCache = response.clone();
+          // 🔧 스마트 캐싱: 확장프로그램 리소스 필터링
+          const url = event.request.url;
+          const isCacheable = url.startsWith('http://') || url.startsWith('https://');
+          const isExtensionResource = url.startsWith('chrome-extension://') ||
+                                     url.startsWith('moz-extension://') ||
+                                     url.startsWith('webkit-extension://') ||
+                                     url.startsWith('ms-browser-extension://');
 
-          caches.open(CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, responseToCache);
-            });
+          // 캐시 가능한 리소스만 캐시에 저장
+          if (isCacheable && !isExtensionResource) {
+            const responseToCache = response.clone();
+
+            caches.open(CACHE_NAME)
+              .then(cache => {
+                cache.put(event.request, responseToCache);
+              })
+              .catch(error => {
+                console.warn('캐시 저장 실패 (무시됨):', error.message);
+              });
+          }
 
           return response;
         });

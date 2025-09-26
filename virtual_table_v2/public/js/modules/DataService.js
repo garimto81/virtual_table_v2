@@ -84,6 +84,31 @@ export class DataService {
         }
     }
 
+    // Google Sheets 데이터 메서드
+    async loadSheetData() {
+        try {
+            const response = await this.request('/sheets/read');
+            if (response.success && response.data) {
+                console.log('📊 Sheet 데이터 로드 성공:', response.data);
+                return response.data;
+            }
+            return [];
+        } catch (error) {
+            console.error('Sheet 데이터 로드 실패:', error);
+            return [];
+        }
+    }
+
+    async testSheetConnection() {
+        try {
+            const response = await this.request('/sheets/test');
+            return response;
+        } catch (error) {
+            console.error('Sheet 연결 테스트 실패:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
     // 인증 메서드
     async login(email, password) {
         const response = await this.request('/auth/login', {

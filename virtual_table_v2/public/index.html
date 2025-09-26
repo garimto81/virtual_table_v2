@@ -32,6 +32,18 @@
                 <button type="submit" class="btn btn-primary">회원가입</button>
                 <button type="button" id="showLogin" class="btn btn-secondary">로그인으로 돌아가기</button>
             </form>
+            <!-- 임시 계정 안내 -->
+            <div class="temp-accounts-info" style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; font-size: 14px;">
+                <h4 style="margin-bottom: 10px; color: #ffc107;">📌 임시 계정 안내</h4>
+                <div style="line-height: 1.6;">
+                    <div>• <strong>테스트:</strong> test@poker.com / test123</div>
+                    <div>• <strong>관리자:</strong> admin@poker.com / admin123</div>
+                    <div>• <strong>데모:</strong> demo@poker.com / demo123</div>
+                </div>
+                <div style="margin-top: 10px; color: #aaa; font-size: 12px;">
+                    ※ 회원가입 기능은 현재 메모리에만 저장되며, 서버 재시작 시 초기화됩니다.
+                </div>
+            </div>
         </div>
     </div>
 
@@ -62,9 +74,50 @@
         <main class="tab-content">
             <!-- 핸드 로거 탭 -->
             <div id="handTab" class="tab-panel active">
+                <!-- Google Sheets 연동 섹션 (새로 추가) -->
+                <section class="card">
+                    <h3>📊 테이블 선택</h3>
+                    <div class="sync-controls">
+                        <div class="sync-status">
+                            <span id="syncStatus" class="status-badge">
+                                <span class="status-dot"></span>
+                                오프라인
+                            </span>
+                            <button id="loadSheetsBtn" class="btn btn-secondary btn-sm">
+                                🔄 Sheets에서 로드
+                            </button>
+                        </div>
+                        <div class="info-row">
+                            <label>포커룸:</label>
+                            <select id="pokerRoom" class="input-medium">
+                                <option value="">-- 선택하세요 --</option>
+                                <option value="Merit Hall">Merit Hall</option>
+                                <option value="GGPoker">GGPoker</option>
+                                <option value="PokerStars">PokerStars</option>
+                            </select>
+                        </div>
+                        <div class="info-row">
+                            <label>테이블:</label>
+                            <select id="tableSelect" class="input-medium">
+                                <option value="">-- 먼저 Sheets 로드 --</option>
+                            </select>
+                        </div>
+                        <div class="table-info" id="tableInfo" style="display:none;">
+                            <div class="info-badge">
+                                <span class="label">플레이어:</span>
+                                <span id="playerCount">0</span>명
+                            </div>
+                            <div class="info-badge">
+                                <span class="label">평균 칩:</span>
+                                <span id="avgChips">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- 핸드 정보 -->
                 <section class="card">
-                    <h3>핸드 정보</h3>
+                    <h3>🎯 핸드 정보</h3>
                     <div class="hand-info">
                         <div class="info-row">
                             <label>딜러 버튼:</label>
@@ -99,12 +152,34 @@
                             <input type="number" id="initialChips" placeholder="1000" class="input-medium">
                         </div>
                     </div>
-                    <button id="startHandBtn" class="btn btn-primary btn-block">새 핸드 시작</button>
+                    <button id="startHandBtn" class="btn btn-primary btn-block">
+                        ➕ 새 핸드 시작
+                    </button>
+                </section>
+
+                <!-- 플레이어 선택 -->
+                <section class="card" id="playerSelectionSection" style="display:none;">
+                    <h3>👥 플레이어 선택</h3>
+                    <div class="player-controls">
+                        <button id="autoLoadPlayers" class="btn btn-info btn-block">
+                            📋 테이블에서 플레이어 자동 로드
+                        </button>
+                        <div class="player-list" id="playerList">
+                            <!-- 동적으로 플레이어 체크박스 생성됨 -->
+                        </div>
+                        <div class="manual-add">
+                            <input type="text" id="manualPlayerName" placeholder="수동으로 플레이어 추가">
+                            <button id="addManualPlayer" class="btn btn-secondary">추가</button>
+                        </div>
+                    </div>
+                    <button id="confirmPlayers" class="btn btn-primary btn-block">
+                        플레이어 확정
+                    </button>
                 </section>
 
                 <!-- 칩 계산기 -->
                 <section class="card" id="chipCalculatorSection" style="display:none;">
-                    <h3>칩 계산기</h3>
+                    <h3>💰 칩 계산기</h3>
                     <div class="chip-grid">
                         <button class="chip-btn" data-value="1">1</button>
                         <button class="chip-btn" data-value="5">5</button>
@@ -129,6 +204,40 @@
                 <!-- 액션 버튼 -->
                 <section class="card" id="actionSection" style="display:none;">
                     <h3>액션</h3>
+
+                    <!-- 현재 게임 상태 -->
+                    <div class="game-status">
+                        <!-- 라운드 및 게임 정보 -->
+                        <div class="round-info">
+                            <div id="currentRound" class="current-round">PREFLOP</div>
+                            <div id="handTimer" class="hand-timer">00:00</div>
+                        </div>
+
+                        <div class="status-row">
+                            <div id="currentPlayerInfo" class="current-player-info">
+                                <div class="current-player">현재 플레이어 정보가 여기에 표시됩니다</div>
+                            </div>
+                            <div id="potInfo" class="pot-info">
+                                <div><strong>팟: 0</strong></div>
+                            </div>
+                        </div>
+
+                        <!-- 플레이어 요약 -->
+                        <div class="players-summary" id="playersSummary">
+                            <div class="players-grid" id="playersGrid">
+                                <!-- 플레이어 카드들이 여기에 동적으로 생성됩니다 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 액션 히스토리 -->
+                    <div class="action-history-section">
+                        <h4>액션 히스토리</h4>
+                        <div id="actionHistory" class="action-history">
+                            <div class="no-actions">아직 액션이 없습니다</div>
+                        </div>
+                    </div>
+
                     <div class="action-grid">
                         <button class="action-btn" data-action="FOLD">폴드</button>
                         <button class="action-btn" data-action="CHECK">체크</button>

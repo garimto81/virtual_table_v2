@@ -8,6 +8,47 @@ const router = express.Router();
 // 임시 사용자 저장소 (실제로는 데이터베이스 사용)
 const users = new Map();
 
+// 임시 계정 초기화 (서버 시작 시 자동 생성)
+const initTempAccounts = async () => {
+  // 테스트용 임시 계정 1
+  const tempUser1 = {
+    id: 'temp-user-001',
+    email: 'test@poker.com',
+    name: '테스트 사용자',
+    password: await bcrypt.hash('test123', 10),
+    createdAt: new Date().toISOString()
+  };
+  users.set('test@poker.com', tempUser1);
+
+  // 테스트용 임시 계정 2
+  const tempUser2 = {
+    id: 'temp-user-002',
+    email: 'admin@poker.com',
+    name: '관리자',
+    password: await bcrypt.hash('admin123', 10),
+    createdAt: new Date().toISOString()
+  };
+  users.set('admin@poker.com', tempUser2);
+
+  // 데모용 임시 계정
+  const demoUser = {
+    id: 'demo-user-001',
+    email: 'demo@poker.com',
+    name: '데모 사용자',
+    password: await bcrypt.hash('demo123', 10),
+    createdAt: new Date().toISOString()
+  };
+  users.set('demo@poker.com', demoUser);
+
+  logger.info('✅ 임시 계정 생성 완료:');
+  logger.info('   - test@poker.com / test123');
+  logger.info('   - admin@poker.com / admin123');
+  logger.info('   - demo@poker.com / demo123');
+};
+
+// 서버 시작 시 임시 계정 초기화
+initTempAccounts();
+
 // JWT 토큰 생성
 const generateTokens = (userId) => {
   const accessToken = jwt.sign(
